@@ -1,7 +1,7 @@
 """python pipeline/tests/test_stats.py — checks the stat math on a hand-made game."""
 import pathlib, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import fetch, stats
+import fetch, history, stats
 
 
 def pa(batter, pitcher, result, bh="R", ph="R", re24="0", wpa="0", codes=("B", "H"), traj="", rbi=0):
@@ -49,6 +49,15 @@ def test():
     assert fetch.group(rel) == {"2023": {"challenge": ["v0.1.0-2023.1/CPBL-2023-Challenge-OpenData.zip"],
                                          "regular": ["v0.1.0-2023.0/CPBL-2023-G1-G150-OpenData.zip", "v0.1.0-2023.1/CPBL-2023-G151-G300-OpenData.zip"],
                                          "taiwan": ["v0.1.0-2023.1/CPBL-2023-TaiwanSeries-OpenData.zip"]}}
+    assert history.outs("58.1") == 175 and history.outs("0.2") == 2 and history.fid("ACC") == "HCHks"
+    r = lambda i, team, name: {"id": i, "team": team, "name": name}
+    m = history.match({2023: [r("r1", "HCHks", "甲"), r("r2", "hThSB", "乙"), r("r3", "hThSB", "乙")]},
+                      {2023: [r("h1", "HCHks", "甲"), r("h2", "hThSB", "乙")]})
+    assert m == {"r1": "h1"}, m  # r2/r3 share a name on one team: ambiguous, skipped
+    row = history.pit_row("p", {"_name": "丙", "_teams": {"ACN": 30}, "IP": 30, "ER": 3, "H": 8, "BB": 2, "SO": 9, "HR": 1, "IBB": 0, "HBP": 0, "BF": 40,
+                                "G": 1, "GS": 1, "W": 1, "L": 0, "SV": 0, "HLD": 0, "R": 3, "GR": 0, "CG": 0, "SHO": 0, "NP": 0, "WP": 0, "BK": 0, "GO": 0, "FO": 0},
+                         {}, {"era": 3.0, "cfip": 3.1})["splits"]["all"]
+    assert row["IP"] == 10.0 and row["ERA"] == 2.7 and row["W"] == 1 and "NP" not in row, row
     print("ok")
 
 
