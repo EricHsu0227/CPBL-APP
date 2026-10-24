@@ -35,7 +35,7 @@ export default function Home({ index }) {
     <>
       <section className="hero">
         <h1>中華職棒，每一球的數據。</h1>
-        <p className="muted">{index.seasons[0]}–{index.seasons.at(-1)} 球季賽程、比分、戰績、排行榜與球員進階數據，資料來自野球革命。</p>
+        <p className="muted">{index.history?.[0] ?? index.seasons[0]}–{index.seasons.at(-1)} 球季戰績、排行榜與球員生涯數據；{index.seasons[0]} 年起有逐場比分與每一球的進階數據，資料來自野球革命。</p>
         <PlayerSearch className="hero-search" names={names} placeholder="搜尋球員，例如「林安可」" onPick={(p) => nav(`/player/${p.id}?role=${p.r[0]}`)} />
         <div className="row center" style={{ marginTop: 14 }}><Link className="btn primary" to="/leaderboard">排行榜</Link><Link className="btn" to="/games">賽程比分</Link></div>
       </section>

@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useData, useSeason } from '../lib/data.js';
-import { GROUPS, SPLITS, SPLIT_GROUPS, qualifies, splitLabel, statDef } from '../lib/catalog.js';
+import { GROUPS, SPLITS, SPLIT_GROUPS, availKeys, qualifies, splitLabel, statDef } from '../lib/catalog.js';
 import { percentile } from '../lib/stats.js';
 import { Seg, StatTable, TeamChip, TeamLink } from '../components/ui.jsx';
 import { team } from '../lib/teams.js';
 import { PITCH, PITCH_COLOR } from '../lib/format.js';
 import { teamGames } from './Leaderboard.jsx';
 
-const TILES = { bat: ['AVG', 'OBP', 'SLG', 'OPS', 'HR', 'wRC+'], pit: ['ERA', 'IP', 'SO', 'WHIP', 'FIP', 'K%'] };
-const PCTS = { bat: ['wOBA', 'wRC+', 'AVG', 'ISO', 'K%', 'BB%', 'Whiff%', 'O-Swing%', 'Hard%', 'WPA'], pit: ['ERA', 'FIP', 'WHIP', 'K%', 'BB%', 'K-BB%', 'Whiff%', 'CSW%', 'GB%', 'wOBA'] };
+const TILES = { bat: ['AVG', 'OBP', 'SLG', 'OPS', 'HR', 'wRC+', 'OPS+'], pit: ['ERA', 'IP', 'SO', 'WHIP', 'FIP', 'K%'] };
+const PCTS = { bat: ['wOBA', 'wRC+', 'OPS+', 'AVG', 'OBP', 'SLG', 'ISO', 'K%', 'BB%', 'Whiff%', 'O-Swing%', 'Hard%', 'WPA'], pit: ['ERA', 'ERA+', 'FIP', 'WHIP', 'K%', 'BB%', 'K-BB%', 'K/9', 'Whiff%', 'CSW%', 'GB%', 'wOBA'] };
 
 function pctColor(p) { // blue (low) -> grey -> red (high), Savant style
   const a = [59, 130, 246], m = [203, 213, 225], b = [239, 68, 68];
@@ -23,7 +23,7 @@ function Percentiles({ row, role, season, tg }) {
   if (!data) return null;
   return (
     <div className="panel card"><h3>聯盟百分位（規定{role === 'bat' ? '打席' : '局數'} {pool.length} 人）</h3>
-      {PCTS[role].map((k) => { const d = statDef(k, role); const v = row.splits.all[k]; const p = percentile(pool.map((r) => r.splits.all[k]), v, d.lowGood); return (
+      {PCTS[role].filter((k) => row.splits.all[k] != null).slice(0, 10).map((k) => { const d = statDef(k, role); const v = row.splits.all[k]; const p = percentile(pool.map((r) => r.splits.all[k]), v, d.lowGood); return (
         <div key={k} className="pct"><span title={d.desc}>{d.label}</span>
           <div className="bar">{p != null && <><i style={{ width: `${p}%`, background: pctColor(p) }} /><b style={{ left: `${p}%`, background: pctColor(p) }}>{p}</b></>}</div>
           <span className="val mono">{d.f(v)}</span></div>); })}
@@ -70,6 +70,10 @@ export default function Player({ index }) {
   const years = Object.keys(p.seasons).filter((y) => p.seasons[y][role]).sort();
   const season = years.includes(q.get('season')) ? q.get('season') : years.at(-1);
   const cur = p.seasons[season][role];
+  const careerRows = years.map((y) => p.seasons[y][role]);
+  const groups = Object.entries(GROUPS[role]).filter(([, [, ks]]) => availKeys(ks, careerRows).filter((k) => k !== 'PA' && k !== 'IP' && k !== 'TBF').length > 1);
+  const grp = groups.some(([k]) => k === group) ? group : groups[0]?.[0] || 'std';
+  const tiles = availKeys(TILES[role], [cur]).slice(0, 6);
   const set = (o) => setQ({ role, season, ...o });
   const tgOf = (st) => teamGames(st);
   return (
@@ -77,19 +81,19 @@ export default function Player({ index }) {
       <section className="panel hero-card" style={{ borderTop: `4px solid ${team(cur.team, names).color}` }}>
         <TeamChip id={cur.team} names={names} size={72} />
         <div className="grow"><h1>{p.name}</h1>
-          <div className="row muted"><TeamLink id={cur.team} names={names} season={season} /> · #{cur.num} · {role === 'bat' ? `打擊 ${cur.hand === 'S' ? '左右開弓' : cur.hand === 'L' ? '左打' : '右打'}` : `${cur.hand === 'L' ? '左投' : '右投'}`}</div>
+          <div className="row muted"><TeamLink id={cur.team} names={names} season={season} /> {cur.num ? `· #${cur.num} ` : ''}· {role === 'bat' ? `打擊 ${cur.hand === 'S' ? '左右開弓' : cur.hand === 'L' ? '左打' : cur.hand === 'R' ? '右打' : '—'}` : `${cur.hand === 'L' ? '左投' : cur.hand === 'R' ? '右投' : '—'}`}</div>
           <div className="row" style={{ marginTop: 8 }}>
             {p.roles.length > 1 && <Seg small value={role} onChange={(r) => setQ({ role: r })} options={[['bat', '打擊'], ['pit', '投球']]} />}
             <select value={season} onChange={(e) => set({ season: e.target.value })}>{[...years].reverse().map((y) => <option key={y} value={y}>{y} 球季</option>)}</select>
           </div></div>
-        <div className="hero-tiles">{TILES[role].map((k) => { const d = statDef(k, role); return <div key={k} className="tile"><div className="k">{d.label}</div><div className="v">{d.f(cur.splits.all[k])}</div></div>; })}</div>
+        <div className="hero-tiles">{tiles.map((k) => { const d = statDef(k, role); return <div key={k} className="tile"><div className="k">{d.label}</div><div className="v">{d.f(cur.splits.all[k])}</div></div>; })}</div>
       </section>
       <div className="grid">
         <PercentilesWrap row={cur} role={role} season={season} tgOf={tgOf} />
-        {role === 'pit' && p.seasons[season].arsenal ? <Arsenal ars={p.seasons[season].arsenal} /> : <SplitsCard cur={cur} role={role} season={season} />}
-        {role === 'pit' && p.seasons[season].arsenal && <SplitsCard cur={cur} role={role} season={season} />}
-        <div className="panel card span"><div className="row between"><h3>生涯例行賽成績</h3><Seg small value={group} onChange={setGroup} options={Object.entries(GROUPS[role]).map(([k, [l]]) => [k, l])} /></div>
-          <StatTable lead="球季" keys={GROUPS[role][group][1]} def={(k) => statDef(k, role)}
+        {role === 'pit' && p.seasons[season].arsenal && <Arsenal ars={p.seasons[season].arsenal} />}
+        {cur.splits.vsL && <SplitsCard cur={cur} role={role} season={season} />}
+        <div className="panel card span"><div className="row between"><h3>生涯例行賽成績{years[0] < 2023 && '（1990–2022 為整季累計）'}</h3><Seg small value={grp} onChange={setGroup} options={groups.map(([k, [l]]) => [k, l])} /></div>
+          <StatTable lead="球季" keys={availKeys(GROUPS[role][grp][1], careerRows)} def={(k) => statDef(k, role)}
             rows={years.map((y) => ({ key: y, cells: p.seasons[y][role].splits.all, lead: <span className="row"><a href={`#/player/${id}?role=${role}&season=${y}`}>{y}</a><TeamChip id={p.seasons[y][role].team} names={names} size={18} /></span> }))} /></div>
         {p.logs?.[season]?.[role]?.length > 0 && <GameLog log={p.logs[season][role]} role={role} season={season} names={names} />}
       </div>

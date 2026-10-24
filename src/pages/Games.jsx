@@ -6,7 +6,8 @@ import { GameCard } from '../components/games.jsx';
 import { date, wd } from '../lib/format.js';
 
 export default function Games({ index }) {
-  const [season, setSeason] = usePref('season', index.seasons.at(-1));
+  const [pref, setSeason] = usePref('season', index.seasons.at(-1));
+  const season = index.seasons.includes(pref) ? pref : index.seasons.at(-1);
   const [q, setQ] = useSearchParams();
   const [teamF, setTeamF] = usePref('games:team', 'all');
   const { data: games } = useData(`${season}/games.json`);
@@ -22,7 +23,7 @@ export default function Games({ index }) {
       <div className="row between"><h1>賽程比分</h1>
         <div className="row"><SeasonSelect seasons={index.seasons} value={season} onChange={(y) => { setSeason(y); go(null); }} /></div></div>
       <div className="row" style={{ marginBottom: 12 }}>
-        <Seg small value={teamF} onChange={setTeamF} options={[['all', '全部球隊'], ...Object.keys(index.teams).map((id) => [id, <TeamChip key={id} id={id} names={index.teams} size={18} />])]} />
+        <Seg small value={teamF} onChange={setTeamF} options={[['all', '全部球隊'], ...[...new Set((games || []).flatMap((g) => [g.away.id, g.home.id]))].map((id) => [id, <TeamChip key={id} id={id} names={index.teams} size={18} />])]} />
       </div>
       {games && !dates.length && <div className="panel muted">沒有比賽。</div>}
       {d && (

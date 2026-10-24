@@ -10,10 +10,10 @@ Output (public/data/):
   players/<id>.json                  per-player seasons + game logs
   players-index.json                 search index
 """
-import json, pathlib, sys
+import json, pathlib, shutil, sys
 from collections import defaultdict
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-import fetch, stats
+import fetch, history, stats
 
 OUT = pathlib.Path(__file__).resolve().parents[1] / "public" / "data"
 KINDS = ("regular", "challenge", "taiwan")
@@ -105,8 +105,6 @@ def build_season(season, logs, players):
     dump(d / "standings.json", {"full": stats.standings(reg, teams), "first": stats.standings([g for g in reg if g["seq"] <= half], teams),
                                 "second": stats.standings([g for g in reg if g["seq"] > half], teams), "halfAt": half})
     bat, pit, arsenal, meta = stats.season_tables(reg)
-    dump(d / "bat.json", {"season": int(season), "role": "bat", "players": bat})
-    dump(d / "pit.json", {"season": int(season), "role": "pit", "players": pit})
     dump(d / "arsenal.json", arsenal)
     dump(d / "meta.json", meta)
     game_logs(by_kind, logs, season)
@@ -118,12 +116,54 @@ def build_season(season, logs, players):
             p["seasons"].setdefault(season, {})[role] = {"team": r["team"], "num": r["num"], "hand": r["hand"], "splits": r["splits"]}
             if role == "pit" and r["id"] in arsenal:
                 p["seasons"][season]["arsenal"] = arsenal[r["id"]]
-    return teams, {"games": len(games), "regular": len(reg)}
+    return teams, {"games": len(games), "regular": len(reg)}, bat, pit
+
+
+def add_history(players, rebas, teams):
+    """Season-level 1990-2022 from history-data/. Players are matched to 野球革命 ids through their 2023-24 rows; the
+    unmatched get a player file of their own. Also copies W/L/SV/HLD onto the 2023-24 pitcher lines. Returns (years, extra team names)."""
+    hp, st = history.read("players.csv"), history.read("CPBL/standings.csv")
+    hand_of = history.hands(hp)
+    hist = {y: history.build_year(y, hand_of, st) for y in range(history.FIRST, history.LAST_EXTRA + 1)}  # year -> (bat, pit, standings, teams)
+    shared = {s: hist[int(s)] for s in rebas if int(s) in hist}
+    uniq = lambda b, p: list({r["id"]: r for r in [*p, *b]}.values())
+    m = history.match({int(s): uniq(*rebas[s]) for s in shared}, {int(s): uniq(*hist[int(s)][:2]) for s in shared})
+    inv = {h: r for r, h in m.items()}
+    for s, (hb, hpit, _, _) in shared.items():  # W/L/SV/HLD for 2023-24 pitchers
+        hrow = {r["id"]: r["splits"]["all"] for r in hpit}
+        for r in rebas[s][1]:
+            h = hrow.get(m.get(r["id"]))
+            if h:
+                for k in ("W", "L", "SV", "HLD", "CG", "SHO", "GR"):
+                    if k in h:
+                        r["splits"]["all"].setdefault(k, h[k])
+    names, years = {}, []
+    for y in range(history.FIRST, 2023):
+        hb, hpit, hst, ht = hist[y]
+        if not hb and not hpit:
+            continue
+        years.append(y)
+        d = OUT / str(y)
+        dump(d / "bat.json", {"season": y, "role": "bat", "players": hb})
+        dump(d / "pit.json", {"season": y, "role": "pit", "players": hpit})
+        dump(d / "standings.json", {"full": hst})
+        for r in hst:
+            names[r["id"]] = r["name"]
+        for role, rows in (("bat", hb), ("pit", hpit)):
+            for r in rows:
+                pid = inv.get(r["id"], r["id"])
+                p = players.setdefault(pid, {"id": pid, "name": r["name"], "roles": set(), "seasons": {}})
+                p["roles"].add(role)
+                p["seasons"].setdefault(str(y), {})[role] = {"team": r["team"], "num": None, "hand": r["hand"], "splits": r["splits"]}
+                if pid == r["id"]:
+                    p["name"] = r["name"]  # history-only player: latest name seen
+    return years, names, len(m)
 
 
 def main(seasons):
+    shutil.rmtree(OUT / "players", ignore_errors=True)  # a player's file name can change when ids get matched
     logs = defaultdict(lambda: defaultdict(lambda: {"bat": [], "pit": []}))
-    players, teams, info = {}, {}, {}
+    players, teams, info, rebas = {}, {}, {}, {}
     for s in seasons:
         fetch.fetch(s)
         r = build_season(s, logs, players)
@@ -131,6 +171,12 @@ def main(seasons):
             for tid, name in r[0].items():
                 teams[tid] = name  # latest season's name wins
             info[s] = r[1]
+            rebas[s] = (r[2], r[3])
+    years, hist_names, matched = add_history(players, rebas, teams)
+    print(f"history: {len(years)} seasons, {matched} players matched to 野球革命 ids", file=sys.stderr)
+    for s, (bat, pit) in rebas.items():
+        dump(OUT / s / "bat.json", {"season": int(s), "role": "bat", "players": bat})
+        dump(OUT / s / "pit.json", {"season": int(s), "role": "pit", "players": pit})
     for p in players.values():  # primary role first: the one with more plate appearances faced / taken
         vol = {r: sum(s[r]["splits"]["all"].get("PA" if r == "bat" else "BF", 0) for s in p["seasons"].values() if r in s) for r in p["roles"]}
         p["roles"] = sorted(p["roles"], key=lambda r: -vol[r])
@@ -144,8 +190,8 @@ def main(seasons):
         team = (last.get(p["roles"][0]) or next(iter(last.values())))["team"]
         index.append({"id": pid, "n": p["name"], "r": p["roles"], "t": team, "y": [int(ys[0]), int(ys[-1])]})
     dump(OUT / "players-index.json", index)
-    dump(OUT / "index.json", {"seasons": sorted(int(s) for s in info), "teams": teams, "info": info,
-                              "source": "野球革命 rebas.tw open data (ODC-By)"})
+    dump(OUT / "index.json", {"seasons": sorted(int(s) for s in info), "history": years, "teams": {**hist_names, **teams}, "info": info,
+                              "source": "野球革命 rebas.tw open data (ODC-By)", "historySource": "ldkrsi/cpbl-opendata (MIT)"})
 
 
 if __name__ == "__main__":

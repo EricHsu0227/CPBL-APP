@@ -28,7 +28,9 @@ def discover():
     with urllib.request.urlopen(req, timeout=60) as r:
         releases = json.load(r)
     seasons = group(releases)
-    (HERE / "sources.json").write_text(json.dumps({"base": f"https://github.com/{REPO}/releases/download", "seasons": seasons}, indent=2) + "\n")
+    src = sources()
+    src["seasons"] = seasons  # keeps the pinned "history" entry
+    (HERE / "sources.json").write_text(json.dumps(src, indent=2) + "\n")
     return seasons
 
 

@@ -41,7 +41,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>)}
       </main>
-      <footer className="foot muted small">數據來源：<a href="https://www.rebas.tw" target="_blank" rel="noreferrer">野球革命 rebas.tw</a>（<a href="https://github.com/rebas-tw/rebas.tw-open-data" target="_blank" rel="noreferrer">開放資料</a>，ODC-By）。部分資料為人工紀錄。</footer>
+      <footer className="foot muted small">數據來源：<a href="https://www.rebas.tw" target="_blank" rel="noreferrer">野球革命 rebas.tw</a>（<a href="https://github.com/rebas-tw/rebas.tw-open-data" target="_blank" rel="noreferrer">開放資料</a>，ODC-By）。部分資料為人工紀錄。1990–2022 球季成績：<a href="https://github.com/ldkrsi/cpbl-opendata" target="_blank" rel="noreferrer">ldkrsi/cpbl-opendata</a>（MIT，原始資料來自中華職棒官網）。</footer>
     </>
   );
 }

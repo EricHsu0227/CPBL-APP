@@ -16,6 +16,8 @@ const L = {
   'Swing%': ['揮棒%', PCT], 'Whiff%': ['揮空%', PCT], 'CSW%': ['CSW%', PCT], 'Zone%': ['好球帶%', PCT], 'Z-Swing%': ['帶內揮棒%', PCT], 'O-Swing%': ['追打%', PCT], 'Z-Contact%': ['帶內擊中%', PCT],
   'P/PA': ['球數/打席', D2], Pitches: ['球數', INT],
   GS: ['先發', INT], IP: ['局數', D1], IPOuts: ['出局數', INT], BF: ['面對打者', INT], TBF: ['面對打席', INT], NP: ['用球數', INT], ER: ['責失', INT], HB: ['觸身', INT],
+  W: ['勝', INT], L: ['敗', INT], SV: ['救援', INT], HLD: ['中繼', INT], GR: ['後援出賽', INT], CG: ['完投', INT], SHO: ['完封', INT], WP: ['暴投', INT], BK: ['投手犯規', INT],
+  GO: ['滾地出局', INT], FO: ['飛球出局', INT], 'OPS+': ['OPS+', INT], 'ERA+': ['ERA+', INT],
   ERA: ['防禦率', D2], WHIP: ['WHIP', D2], FIP: ['FIP', D2], 'K/9': ['K/9', D2], 'BB/9': ['BB/9', D2], 'HR/9': ['HR/9', D2], 'K/BB': ['K/BB', D2], 'K-BB%': ['K-BB%', PCT],
 };
 const DESC = {
@@ -24,8 +26,8 @@ const DESC = {
   'Zone%': '進壘在好球帶的比例（依野球革命進壘座標）', 'Hard%': '強勁擊球比例（野球革命人工紀錄）',
 };
 const BAT_LOW = new Set(['SO', 'CS', 'GIDP', 'K%', 'Whiff%', 'O-Swing%', 'PU%', 'Soft%', 'Swing%']);
-const PIT_HIGH = new Set(['SO', 'K%', 'K/9', 'K/BB', 'K-BB%', 'Whiff%', 'CSW%', 'O-Swing%', 'GB%', 'PU%', 'Soft%', 'WPA', 'RE24', 'IP', 'IPOuts', 'GS', 'Zone%']);
-const NEUTRAL = new Set(['G', 'PA', 'AB', 'BF', 'TBF', 'NP', 'Pitches', 'P/PA', 'LD%', 'FB%', 'Mid%', 'Z-Swing%', 'Swing%', 'GS', 'IBB']);
+const PIT_HIGH = new Set(['W', 'SV', 'HLD', 'CG', 'SHO', 'ERA+', 'SO', 'K%', 'K/9', 'K/BB', 'K-BB%', 'Whiff%', 'CSW%', 'O-Swing%', 'GB%', 'PU%', 'Soft%', 'WPA', 'RE24', 'IP', 'IPOuts', 'GS', 'Zone%']);
+const NEUTRAL = new Set(['GO', 'FO', 'GR', 'G', 'PA', 'AB', 'BF', 'TBF', 'NP', 'Pitches', 'P/PA', 'LD%', 'FB%', 'Mid%', 'Z-Swing%', 'Swing%', 'GS', 'IBB']);
 
 export function direction(key, role = 'bat') {
   if (NEUTRAL.has(key)) return 0;
@@ -44,13 +46,13 @@ export const splitLabel = (id, role = 'bat') => { const s = SPLITS.find((x) => x
 export const GROUPS = {
   bat: {
     std: ['標準', ['G', 'PA', 'AB', 'R', 'H', '2B', '3B', 'HR', 'RBI', 'BB', 'SO', 'SB', 'AVG', 'OBP', 'SLG', 'OPS']],
-    adv: ['進階', ['PA', 'wOBA', 'wRC+', 'wRAA', 'ISO', 'BABIP', 'K%', 'BB%', 'BB/K', 'WPA', 'RE24']],
+    adv: ['進階', ['PA', 'OPS+', 'wOBA', 'wRC+', 'wRAA', 'ISO', 'BABIP', 'K%', 'BB%', 'BB/K', 'WPA', 'RE24']],
     disc: ['選球', ['PA', 'P/PA', 'Swing%', 'Z-Swing%', 'O-Swing%', 'Whiff%', 'Z-Contact%', 'CSW%', 'Zone%']],
     bb: ['擊球', ['PA', 'GB%', 'LD%', 'FB%', 'PU%', 'Hard%', 'Mid%', 'Soft%']],
   },
   pit: {
-    std: ['標準', ['G', 'GS', 'IP', 'H', 'R', 'ER', 'HR', 'BB', 'SO', 'ERA', 'WHIP']],
-    adv: ['進階', ['IP', 'FIP', 'K%', 'BB%', 'K-BB%', 'K/9', 'BB/9', 'HR/9', 'BABIP', 'wOBA', 'WPA', 'RE24']],
+    std: ['標準', ['G', 'GS', 'W', 'L', 'SV', 'HLD', 'IP', 'H', 'R', 'ER', 'HR', 'BB', 'SO', 'ERA', 'WHIP']],
+    adv: ['進階', ['IP', 'ERA+', 'FIP', 'K%', 'BB%', 'K-BB%', 'K/9', 'BB/9', 'HR/9', 'BABIP', 'wOBA', 'WPA', 'RE24']],
     disc: ['球路', ['TBF', 'Pitches', 'Whiff%', 'CSW%', 'Zone%', 'O-Swing%', 'Z-Contact%', 'Swing%']],
     bb: ['被擊球', ['TBF', 'AVG', 'OBP', 'SLG', 'GB%', 'LD%', 'FB%', 'PU%', 'Hard%', 'Soft%']],
   },
@@ -62,3 +64,8 @@ export const SPLIT_GROUPS = {
 };
 /** CPBL qualifiers: 3.1 PA / 1 IP per team game. */
 export const qualifies = (row, role, teamGames) => (role === 'bat' ? (row.splits.all.PA || 0) >= 3.1 * teamGames : (row.splits.all.IPOuts || 0) >= 3 * teamGames);
+
+/** Columns of a stat group that exist in the data (history seasons only have season totals). */
+export const availKeys = (keys, rows, split = 'all') => keys.filter((k) => rows.some((r) => r.splits?.[split]?.[k] != null));
+export const hasSplits = (rows) => rows.some((r) => r.splits?.vsL);
+export const pickKey = (keys, ...cands) => cands.find((k) => keys.includes(k)) || keys[0];

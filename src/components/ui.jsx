@@ -23,9 +23,9 @@ export function TeamChip({ id, names, size = 26 }) {
   const t = team(id, names);
   return <span className="tchip" style={{ '--tc': t.color, '--s': size + 'px' }} title={t.name}>{t.short[0]}</span>;
 }
-export function TeamLink({ id, names, short, size = 22, season }) {
+export function TeamLink({ id, names, short, size = 22, season, label }) {
   const t = team(id, names);
-  return <Link className="team-link" to={`/team/${id}${season ? `?season=${season}` : ''}`}><TeamChip id={id} names={names} size={size} />{short ? t.short : t.name}</Link>;
+  return <Link className="team-link" to={`/team/${id}${season ? `?season=${season}` : ''}`}><TeamChip id={id} names={names} size={size} />{short ? t.short : label || t.name}</Link>;
 }
 export function Avatar({ name, size = 40, color }) {
   return <span className="tchip" style={{ '--tc': color || 'var(--accent)', '--s': size + 'px' }}>{name?.[0] || '?'}</span>;
