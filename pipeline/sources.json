@@ -26,13 +26,27 @@
     },
     "2025": {
       "challenge": [
-        "v0.1.0-2025/CPBL-2025-Challenge-OpenData.zip"
+        "v0.1.0-2025/CPBL-2025-Challenge-OpenData.zip",
+        "v0.1.1-2026/CPBL-2025-Challenge-OpenData.zip"
       ],
       "regular": [
-        "v0.1.0-2025/CPBL-2025-OpenData.zip"
+        "v0.1.0-2025/CPBL-2025-OpenData.zip",
+        "v0.1.1-2026/CPBL-2025-OpenData.zip"
       ],
       "taiwan": [
-        "v0.1.0-2025/CPBL-2025-TaiwanSeries-OpenData.zip"
+        "v0.1.0-2025/CPBL-2025-TaiwanSeries-OpenData.zip",
+        "v0.1.1-2026/CPBL-2025-TaiwanSeries-OpenData.zip"
+      ]
+    },
+    "2026": {
+      "challenge": [
+        "v0.1.1-2026/CPBL-2026-Challenge-OpenData.zip"
+      ],
+      "regular": [
+        "v0.1.1-2026/CPBL-2026-OpenData.zip"
+      ],
+      "taiwan": [
+        "v0.1.1-2026/CPBL-2026-TaiwanSeries-OpenData.zip"
       ]
     }
   }
